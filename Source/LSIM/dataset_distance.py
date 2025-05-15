@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import imageio
 import math
+import h5py
 
 class DatasetDistance(Dataset):
     def __init__(self, name, dataDirs, exclude=[], include=[], transform=None, fileType="png"):
@@ -43,6 +44,7 @@ class DatasetDistance(Dataset):
     def __getitem__(self, idx):
         directory = self.dataPaths[idx]
         fileNames = os.listdir(directory)
+        print(directory,fileNames)
         fileNames.sort()
 
         listFrames = []
@@ -57,6 +59,21 @@ class DatasetDistance(Dataset):
                 frame = imageio.imread(filePath)
             elif self.fileType == "npz":
                 frame = np.load(filePath)['arr_0']
+            elif self.fileType == "h5":
+                with h5py.File(filePath, "r+") as f:
+
+                    Nx = f['x'][:].shape[0]
+                    Ny = f['y'][:].shape[0]
+
+                    frame = np.zeros((Nx, Ny, 7))
+                    frame[...,0] = f['u'][:]
+                    frame[...,1] = f['v'][:]
+                    frame[...,2] = f['p'][:]
+                    frame[...,3] = f['c11'][:]
+                    frame[...,4] = f['c22'][:]
+                    frame[...,5] = f['c33'][:]
+                    frame[...,6] = f['c12'][:]
+                    
 
             if frame.ndim == 2:
                 frame = frame[...,None]
