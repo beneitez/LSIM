@@ -151,7 +151,6 @@ class DatasetDistance(Dataset):
 
 
         frames = np.array(listFrames)
-        print("Number of frames: ", frames.shape)
         # Optional check for expected number of frames (commented out)
         #if frames.shape[0] != 11:
         #    print("%s is missing files!" % directory)
@@ -338,9 +337,9 @@ class TransformsTrain(object):
             resultRef[i] = ref[top : top+self.outputSize,  left : left+self.outputSize]
             resultOther[i] = oth[top : top+self.outputSize,  left : left+self.outputSize]
 
+
         # Normalization: Scale pixel values to [normMin, normMax] based on min/max in the batch
         # Calculate min and max across all images and spatial dimensions in the batch
-        print(f"Applying TransformsTrain normalization for sample from {path}")
         dMin = np.minimum( np.min(resultRef, axis=(0,1,2)), np.min(resultOther, axis=(0,1,2)) )
         dMax = np.maximum( np.max(resultRef, axis=(0,1,2)), np.max(resultOther, axis=(0,1,2)) )
 
@@ -456,134 +455,4 @@ class TransformsInference(object):
 
         return {"reference": resultRef, "other": resultOther, "distance": dist, "path": path}
 
-        print("Dataset " + name + " at " + str(dataDirs))
-
-        for dataDir in dataDirs:
-            directories = os.listdir(dataDir)
-            directories.sort()
-            for directory in directories:
-                if exclude:
-                    if any( item in directory for item in exclude ) :
-                        continue
-                if include:
-                    if not any( item in directory for item in include ) :
-                        continue
-
-                currentDir = os.path.join(dataDir, directory)
-                self.dataPaths.append(currentDir)
-
-        print("Length: %d" % len(self.dataPaths))
-
-    def __len__(self):
-        return len(self.dataPaths)
-
-    def __getitem__(self, idx):
-        directory = self.dataPaths[idx]
-        fileNames = os.listdir(directory)
-        print(directory,fileNames)
-        fileNames.sort()
-
-        listFrames = []
-        listDist = []
-
-        for fileName in fileNames:
-            filePath = os.path.join(directory, fileName)
-            if not fileName.endswith(".%s" % self.fileType) or fileName == "ref.%s" % self.fileType:
-                continue
-
-            if self.fileType == "png":
-                frame = imageio.imread(filePath)
-            elif self.fileType == "npz":
-                frame = np.load(filePath)['arr_0']
-            elif self.fileType == "h5":
-                with h5py.File(filePath, "r+") as f:
-
-                    Nx = f['x'][:].shape[0]
-                    Ny = f['y'][:].shape[0]
-
-                    frame = np.zeros((Nx, Ny, 7))
-                    frame[...,0] = f['u'][:]
-                    frame[...,1] = f['v'][:]
-                    frame[...,2] = f['p'][:]
-                    frame[...,3] = f['c11'][:]
-                    frame[...,4] = f['c22'][:]
-                    frame[...,5] = f['c33'][:]
-                    frame[...,6] = f['c12'][:]
-                    
-
-            if frame.ndim == 2:
-                frame = frame[...,None]
-            if frame.shape[2] == 4:
-                frame = frame[...,:-1]
-
-            start = len(fileName) - 6
-            end = len(fileName) - 4
-            listDist.append( float(fileName[start:end]) )
-            listFrames.append(frame)
-
-        assert(len(listDist) != 0 and len(listFrames) != 0), "%s: no data to load!" % directory
-
-        distances = np.array(listDist)
-        distances = (distances - np.min(distances)) / (np.max(distances) - np.min(distances))
-
-        frames = np.array(listFrames)
-        #if frames.shape[0] != 11:
-        #    print("%s is missing files!" % directory)
-
-        reference = []
-        other = []
-        dist = []
-
-        for i in range(distances.shape[0]):
-            for j in range(i+1,distances.shape[0]):
-                diff = distances[j] - distances[i]
-                if diff < 0:
-                    raise ValueError('Training distances have to be positive!')
-                reference.append(frames[i])
-                other.append(frames[j])
-                dist.append(diff)
-
-        sample = {"reference": np.stack(reference, 0), "other": np.stack(other, 0),
-                "distance": np.stack(dist, 0), "path": directory}
-            
-        if self.transform:
-            sample = self.transform(sample)
-        return sample
-
-
-    def setDataTransform(self, transform):
-        self.transform = transform
-
-    def computeMeanAndStd(self):
-        print("Computing mean and std of dataset...")
-        mean = 0 # online data mean
-        count = 0 # accumulator for computing online standard deviation
-        M2 = 0 # accumulator for computing online standard deviation
-
-        for path in self.dataPaths:
-            fileNames = os.listdir(path)
-            fileNames.sort()
-
-            for fileName in fileNames:
-                filePath = os.path.join(path, fileName)
-                if not fileName.endswith(".%s" % self.fileType) or fileName == "ref.%s" % self.fileType:
-                    continue
-
-                if self.fileType == "png":
-                    data = imageio.imread(filePath)
-                elif self.fileType == "npz":
-                    data = np.load(filePath)['arr_0']
-
-                if data.shape[2] == 4:
-                    data = data[...,:-1]
-
-                count += data.shape[0] * data.shape[1] * data.shape[2]
-                delta = data - mean
-                mean += np.sum(delta / count)
-                M2 += np.sum(delta * (data - mean))
-
-        std = np.sqrt(M2 / (count-1))
-
-        self.mean, self.std = [mean, std]
-
-        return mean, std
+       

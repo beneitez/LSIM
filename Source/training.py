@@ -21,37 +21,25 @@ from LSIM.trainer import *
 
 # Configure CUDA device visibility and GPU usage
 os.environ["CUDA_VISIBLE_DEVICES"]="0" # Specifies which GPU to use (GPU 0 in this case)
-useGPU = True # Flag to indicate if GPU should be used
+useGPU = False # Flag to indicate if GPU should be used
 
 # --- DATASET SETUP ---
 
 # Initialize the training dataset
 # It loads data from specified directories and excludes certain files
-trainSet = DatasetDistance("Training", dataDirs=["Data/Smoke", "Data/BurgersEq", "Data/AdvDiff", "Data/Liquid"],
-                                exclude=["plume1.", "plume2.", "plume11.", "plume12.",
-                                    "burgersEq1.", "burgersEq2.", "burgersEq3.", "burgersEq4.",
-                                    "burgersEq5.", "burgersEq6.", "burgersEq7.", "burgersEq8.",
-                                    "burgersEq9.", "burgersEq10.", "burgersEq11.", "burgersEq12.",
-                                    "advDiff1.", "advDiff2.", "advDiff3.", "advDiff4.", "advDiff5.",
-                                    "advDiff6.", "advDiff7.", "advDiff8.", "advDiff9.", "advDiff10.",
-                                    "drop1.", "drop2.", "drop3.", "drop21.", "drop22.", "drop23."],)
+trainSet = DatasetDistance("Training", dataDirs=["Data/Viscoelastics"],
+                                exclude=["Sc1e3","Wi20",],fileType="h5",)
 # Initialize the validation dataset
 # It loads data from specified directories and includes certain files (likely the ones excluded from training)
-valSet = DatasetDistance("Validation", dataDirs=["Data/Smoke", "Data/BurgersEq", "Data/AdvDiff", "Data/Liquid"],
-                                include=["plume1.", "plume2.", "plume11.", "plume12.",
-                                    "burgersEq1.", "burgersEq2.", "burgersEq3.", "burgersEq4.",
-                                    "burgersEq5.", "burgersEq6.", "burgersEq7.", "burgersEq8.",
-                                    "burgersEq9.", "burgersEq10.", "burgersEq11.", "burgersEq12.",
-                                    "advDiff1.", "advDiff2.", "advDiff3.", "advDiff4.", "advDiff5.",
-                                    "advDiff6.", "advDiff7.", "advDiff8.", "advDiff9.", "advDiff10.",
-                                    "drop1.", "drop2.", "drop3.", "drop21.", "drop22.", "drop23."],)
+valSet = DatasetDistance("Validation", dataDirs=["Data/Viscoelastics"],
+                                exclude=["Sc1e3","Wi20"],fileType="h5",)
 
 # --- DATA TRANSFORMATIONS ---
 
 # Define transformations for training data (e.g., resizing, normalization)
-transTrain = TransformsTrain(224, normMin=0, normMax=255)
+transTrain = TransformsTrain(256, normMin=0, normMax=255)
 # Define transformations for validation data (e.g., resizing, normalization)
-transVal = TransformsInference(224, 0, normMin=0, normMax=255)
+transVal = TransformsInference(256, 0, normMin=0, normMax=255)
 # Apply the defined transformations to the datasets
 trainSet.setDataTransform(transTrain)
 valSet.setDataTransform(transVal)
@@ -62,10 +50,10 @@ valSet.setDataTransform(transVal)
 # batch_size=1 means one pair of images per batch
 # shuffle=True shuffles the data for better training
 # num_workers=4 uses 4 subprocesses for data loading
-trainLoader = DataLoader(trainSet, batch_size=1, shuffle=True, num_workers=4)
+trainLoader = DataLoader(trainSet, batch_size=1, shuffle=True, num_workers=0)
 # Create DataLoader for the validation set
 # shuffle=False as shuffling is not needed for validation
-valLoader = DataLoader(valSet, batch_size=1, shuffle=False, num_workers=4)
+valLoader = DataLoader(valSet, batch_size=1, shuffle=False, num_workers=0)
 
 # --- MODEL INITIALIZATION ---
 
@@ -105,7 +93,7 @@ trainer = Trainer(model, trainLoader, optimizer, criterion, 800, False)
 validator = Validator(model, valLoader, criterion)
 
 
-# --- ACTUAL TRAINING ---
+# --- TRAINING ---
 
 print('Starting Training')
 
@@ -128,56 +116,4 @@ for epoch in range(0, 40):
 
 print('Finished Training')
 # Save the final trained model
-model.save("Models/TrainedLSiM.pth")
-
-trainSet = DatasetDistance("Training", dataDirs=["Data/Smoke", "Data/BurgersEq", "Data/AdvDiff", "Data/Liquid"],
-                                exclude=["plume1.", "plume2.", "plume11.", "plume12.",
-                                    "burgersEq1.", "burgersEq2.", "burgersEq3.", "burgersEq4.",
-                                    "burgersEq5.", "burgersEq6.", "burgersEq7.", "burgersEq8.",
-                                    "burgersEq9.", "burgersEq10.", "burgersEq11.", "burgersEq12.",
-                                    "advDiff1.", "advDiff2.", "advDiff3.", "advDiff4.", "advDiff5.",
-                                    "advDiff6.", "advDiff7.", "advDiff8.", "advDiff9.", "advDiff10.",
-                                    "drop1.", "drop2.", "drop3.", "drop21.", "drop22.", "drop23."],)
-valSet = DatasetDistance("Validation", dataDirs=["Data/Smoke", "Data/BurgersEq", "Data/AdvDiff", "Data/Liquid"],
-                                include=["plume1.", "plume2.", "plume11.", "plume12.",
-                                    "burgersEq1.", "burgersEq2.", "burgersEq3.", "burgersEq4.",
-                                    "burgersEq5.", "burgersEq6.", "burgersEq7.", "burgersEq8.",
-                                    "burgersEq9.", "burgersEq10.", "burgersEq11.", "burgersEq12.",
-                                    "advDiff1.", "advDiff2.", "advDiff3.", "advDiff4.", "advDiff5.",
-                                    "advDiff6.", "advDiff7.", "advDiff8.", "advDiff9.", "advDiff10.",
-                                    "drop1.", "drop2.", "drop3.", "drop21.", "drop22.", "drop23."],)
-
-transTrain = TransformsTrain(224, normMin=0, normMax=255)
-transVal = TransformsInference(224, 0, normMin=0, normMax=255)
-trainSet.setDataTransform(transTrain)
-valSet.setDataTransform(transVal)
-
-trainLoader = DataLoader(trainSet, batch_size=1, shuffle=True, num_workers=4)
-valLoader = DataLoader(valSet, batch_size=1, shuffle=False, num_workers=4)
-
-model = DistanceModel(baseType="lsim", initBase="pretrained", initLin=0.1, featureDistance="L2",
-                frozenLayers=[], normMode="normDist", useNormUpdate=False, isTrain=True, useGPU=useGPU)
-model.printNumParams()
-
-criterion = CorrelationLoss(weightMSE=0.3, weightCorr=0.7, weightCrossCorr=0.0)
-optimizer = torch.optim.Adam(model.parameters(), lr=0.00001, weight_decay=0.0)
-trainer = Trainer(model, trainLoader, optimizer, criterion, 800, False)
-validator = Validator(model, valLoader, criterion)
-
-
-# ACTUAL TRAINING
-print('Starting Training')
-
-if model.normMode != "normUnit":
-    trainer.normCalibration(1, stopEarly=0)
-
-for epoch in range(0, 40):
-    if epoch % 5 == 1:
-        validator.validationStep()
-
-    trainer.trainingStep(epoch+1)
-
-    model.save("Models/TrainedLSiM_tmp.pth", override=True, noPrint=True)
-
-print('Finished Training')
-model.save("Models/TrainedLSiM.pth")
+model.save("Models/TrainedLSiM_MB.pth")

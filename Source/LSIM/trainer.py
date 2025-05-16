@@ -31,7 +31,10 @@ class Trainer(object):
             self.optimizer.zero_grad()
 
             output = self.model(sample)
-            actual = sample["distance"].cuda()
+            if self.model.useGPU:
+                actual = sample["distance"].cuda()
+            else:
+                actual = sample["distance"].cpu()
 
             loss = self.criterion(output, actual)
             loss.backward()
@@ -134,7 +137,10 @@ class Validator(object):
 
             for i, sample in enumerate(self.valLoader, 0):
                 out = self.model(sample)
-                act = sample["distance"].cuda()
+                if self.model.useGPU:
+                    act = sample["distance"].cuda()
+                else:
+                    act = sample["distance"].cpu()
 
                 output.append(out[:10].cpu().numpy())
                 actual.append(act[:10].cpu().numpy())

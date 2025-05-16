@@ -6,13 +6,24 @@ from torchvision import models
 
 
 class LSiM_Base(torch.nn.Module):
+    # Constructor for the LSiM_Base class
     def __init__(self):
+        # Call the constructor of the parent class (torch.nn.Module)
         super(LSiM_Base, self).__init__()
-        self.channels = [32,96,192,128,128]
-        self.featureMapSize = [55,26,12,12,12]
+
+        # Number of channels for each convolutional layer output.
+        self.channels = [32, 96, 192, 128, 128]
+        # Expected feature map sizes (height/width) at different stages.
+        self.featureMapSize = [55, 26, 12, 12, 12]
 
         self.slice1 = nn.Sequential(
-            nn.Conv2d(3, 32, 12, stride=4, padding=2),
+            # 2D Convolutional layer:
+            #   - 7 input channels (Viscoelastic flows)
+            #   - 32 output channels
+            #   - 12x12 kernel size
+            #   - Stride of 4
+            #   - Padding of 2
+            nn.Conv2d(7, 32, kernel_size=12, stride=4, padding=2),
             nn.ReLU(),
         )
         self.slice2 = torch.nn.Sequential(
@@ -36,6 +47,8 @@ class LSiM_Base(torch.nn.Module):
         self.N_slices = 5
         self.layerList = [self.slice1, self.slice2, self.slice3, self.slice4, self.slice5]
 
+    # Define the forward pass of the network
+    # X is the input tensor (e.g., an image or batch of images)
     def forward(self, X):
         h = self.slice1(X)
         h_relu1 = h
@@ -51,6 +64,7 @@ class LSiM_Base(torch.nn.Module):
         outputs = namedtuple("LSiMBaseOutputs", ['relu1', 'relu2', 'relu3', 'relu4', 'relu5'])
         out = outputs(h_relu1, h_relu2, h_relu3, h_relu4, h_relu5)
 
+        # Return the namedtuple containing all the intermediate ReLU outputs
         return out
 
 
@@ -62,7 +76,7 @@ class LSiM_Skip(torch.nn.Module):
         self.featureMapSize = [55,26,12,12,12,26,55,55]
 
         self.conv1 = nn.Sequential(
-            nn.Conv2d(3, 32, 12, stride=4, padding=2),
+            nn.Conv2d(7, 32, 12, stride=4, padding=2),
             nn.ReLU(),
         )
         self.conv2 = torch.nn.Sequential(
